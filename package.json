@@ -1,0 +1,11 @@
+{
+  "name": "atelier-particle-lab",
+  "version": "1.0.0",
+  "description": "ATELIER — Reactive Particle & Fluid Dynamics Laboratory. Server-authoritative falling-sand/fluid sim with chunk sleeping, SSE telemetry and binary snapshots. Zero dependencies.",
+  "scripts": {
+    "dev": "node server/index.js",
+    "start": "node server/index.js",
+    "test": "node test/physics.test.js"
+  },
+  "engines": { "node": ">=18" }
+}

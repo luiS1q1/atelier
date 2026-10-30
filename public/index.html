@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ATELIER — Reactive Particle &amp; Fluid Dynamics Laboratory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header id="topbar">
+  <div class="brand">
+    <span class="brand-dot" aria-hidden="true"></span>
+    <h1>ATELIER</h1>
+    <span class="brand-sub">REACTIVE PARTICLE &amp; FLUID DYNAMICS LABORATORY</span>
+  </div>
+  <div class="seg" id="viewmode" role="group" aria-label="Render mode">
+    <button data-view="material" class="on">MATERIAL</button>
+    <button data-view="thermal">THERMAL</button>
+    <button data-view="chunks">CHUNKS</button>
+  </div>
+  <div class="stats mono">
+    <div><label>TICK</label><span id="st-tick">0</span></div>
+    <div><label>PARTICLES</label><span id="st-part">0</span></div>
+    <div><label>CHUNKS</label><span id="st-chunk">0/0</span></div>
+    <div><label>STEP</label><span id="st-step">— µs</span></div>
+    <div><label>MEM</label><span id="st-mem">— MB</span></div>
+  </div>
+</header>
+
+<main>
+  <aside id="left" class="panel">
+    <div class="panel-head">MATERIALS</div>
+    <div id="materials"></div>
+    <div class="panel-head">BRUSH</div>
+    <div class="brush-row">
+      <input id="brush" type="range" min="1" max="64" value="6" step="1">
+      <span id="brush-val" class="mono">06</span>
+    </div>
+    <div class="brush-row">
+      <button id="btn-clear" class="btn danger">FLUSH CELL</button>
+    </div>
+    <div class="panel-head">LEGEND</div>
+    <div class="legend mono" id="legend"></div>
+  </aside>
+
+  <section id="stage">
+    <canvas id="sim" width="320" height="192"></canvas>
+    <canvas id="fx"></canvas>
+    <div id="loupe" class="mono" hidden>
+      <div class="loupe-mat" id="lp-mat">—</div>
+      <div id="lp-temp">— °C</div>
+      <div id="lp-vel">v (0, 0)</div>
+      <div id="lp-chunk">CHUNK —</div>
+    </div>
+    <div id="paused-badge" hidden>PAUSED</div>
+  </section>
+
+  <aside id="right" class="panel">
+    <div class="panel-head">GRAVITY VECTOR</div>
+    <div class="dial-wrap">
+      <svg id="dial" viewBox="0 0 200 200" width="170" height="170">
+        <circle cx="100" cy="100" r="92" fill="#141517" stroke="#282a2e"/>
+        <g id="dial-ticks"></g>
+        <g id="dial-labels"></g>
+        <g id="dial-needle">
+          <line x1="100" y1="100" x2="100" y2="26" stroke="#ff4400" stroke-width="3" stroke-linecap="round"/>
+          <path d="M100 20 L95 32 L105 32 Z" fill="#ff4400"/>
+          <circle cx="100" cy="100" r="7" fill="#e8e8e2"/>
+        </g>
+      </svg>
+      <div class="dial-read mono"><span id="g-deg">000°</span><label>GRAVITY</label></div>
+    </div>
+    <div class="panel-head">TIME CONTROL</div>
+    <div class="time-row">
+      <button id="btn-pause" class="btn icon" title="Pause / resume">
+        <svg id="ic-pause" viewBox="0 0 16 16" width="14" height="14"><rect x="3" y="2" width="3.5" height="12" fill="currentColor"/><rect x="9.5" y="2" width="3.5" height="12" fill="currentColor"/></svg>
+        <svg id="ic-play" viewBox="0 0 16 16" width="14" height="14" hidden><path d="M4 2 L13 8 L4 14 Z" fill="currentColor"/></svg>
+      </button>
+      <button id="btn-step" class="btn icon" title="Single tick">
+        <svg viewBox="0 0 16 16" width="14" height="14"><path d="M3 2 L10 8 L3 14 Z" fill="currentColor"/><rect x="11" y="2" width="2.5" height="12" fill="currentColor"/></svg>
+      </button>
+      <div class="seg small" id="speedseg">
+        <button data-speed="0.25">0.25×</button>
+        <button data-speed="1" class="on">1×</button>
+        <button data-speed="2">2×</button>
+      </div>
+    </div>
+    <div class="panel-head">TIMELINE <span class="head-note mono" id="tl-label">LIVE</span></div>
+    <input id="timeline" type="range" min="0" max="149" value="0" step="1">
+    <div class="panel-head">BLUEPRINTS</div>
+    <div id="blueprints" class="snap-list"></div>
+    <div class="panel-head">SNAPSHOTS</div>
+    <div class="snap-row">
+      <input id="snap-name" type="text" placeholder="state name" maxlength="60">
+      <button id="btn-save" class="btn">SAVE</button>
+    </div>
+    <div id="snapshots" class="snap-list"></div>
+  </aside>
+</main>
+<footer>
+  <span>LMB PAINT</span><span>RMB ERASE</span><span>WHEEL BRUSH Ø 1–64</span><span>SPACE PAUSE</span><span>S STEP</span><span>1/2/3 VIEW</span>
+</footer>
+<script src="/app.js"></script>
+</body>
+</html>
