@@ -47,6 +47,15 @@ if (readIndex().filter(s => s.name.startsWith('Blueprint')).length < 3){
   for (const [name, e] of bp) saveSnapshot(name, e);
 }
 
+// a freshly booted cell should not greet you with a black void: load the volcano
+{
+  const c0 = engine.counts(); let p0 = 0; for (let m=1;m<11;m++) p0 += c0[m];
+  if (p0 === 0){
+    const vol = readIndex().find(s => s.name === 'Blueprint · Volcano');
+    if (vol){ try { loadSnapshot(vol.id); lastSentMat.set(engine.mat); lastSentTemp.set(engine.temp); } catch {} }
+  }
+}
+
 const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.svg':'image/svg+xml', '.png':'image/png', '.ico':'image/x-icon' };
 
 function b64(u32){ return Buffer.from(u32.buffer, u32.byteOffset, u32.byteLength).toString('base64'); }
