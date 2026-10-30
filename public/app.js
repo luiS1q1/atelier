@@ -31,11 +31,10 @@ for(let t=-50;t<=1000;t++){
   LUT[o]=a[1]+(b[1]-a[1])*f; LUT[o+1]=a[2]+(b[2]-a[2])*f; LUT[o+2]=a[3]+(b[3]-a[3])*f;
 }
 
-/* ---------- SSE ---------- */
-const es=new EventSource('api/stream');
-es.onmessage=e=>{
+/* ---------- live state: long-poll transport (proxy-safe) ---------- */
+let lastSeq=0;
+function applyFrame(d){
   if(scrubbing) return;
-  const d=JSON.parse(e.data);
   tick=d.t; paused=!!d.paused; $('paused-badge').hidden=!paused;
   if(d.g!==undefined) syncDial(d.g);
   activeChunks=new Set(d.a);
@@ -47,16 +46,24 @@ es.onmessage=e=>{
       const raw=arr[k+2]; temp[i]=(raw&0xFFFF)-500;
     }
   }
-};
-const et=new EventSource('api/telemetry');
-et.onmessage=e=>{
-  const d=JSON.parse(e.data);
+}
+function updateStats(d){
   $('st-tick').textContent=d.tick;
   $('st-part').textContent=d.particles.toLocaleString('en-US');
   $('st-chunk').textContent=d.activeChunks+'/'+d.totalChunks;
   $('st-step').textContent=d.stepUs.toFixed(1)+' µs';
   $('st-mem').textContent=d.heapMB.toFixed(1)+' MB';
-};
+}
+async function pollLoop(){
+  for(;;){
+    try{
+      const d=await (await fetch('api/poll?since='+lastSeq)).json();
+      lastSeq=d.seq; if(!d.same) applyFrame(d);
+    }catch(e){ await new Promise(r=>setTimeout(r,400)); }
+  }
+}
+pollLoop();
+setInterval(async()=>{ try{ updateStats(await (await fetch('api/telemetry.json')).json()); }catch(e){} }, 500);
 
 /* ---------- render loop ---------- */
 function frame(){

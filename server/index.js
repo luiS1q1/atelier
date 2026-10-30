@@ -51,7 +51,7 @@ if (readIndex().filter(s => s.name.startsWith('Blueprint')).length < 3){
 {
   const c0 = engine.counts(); let p0 = 0; for (let m=1;m<11;m++) p0 += c0[m];
   if (p0 === 0){
-    const vol = readIndex().find(s => s.name === 'Blueprint · Volcano');
+    const vol = readIndex().find(s => s.name === 'Blueprint · Hydro-Dam Failure');
     if (vol){ try { loadSnapshot(vol.id); lastSentMat.set(engine.mat); lastSentTemp.set(engine.temp); } catch {} }
   }
 }
@@ -85,6 +85,10 @@ function buildDiff(){
 const streamClients = new Set();
 const teleClients = new Set();
 
+// long-poll transport (survives proxies that buffer SSE)
+const pollWaiters = new Set();
+let latestDiff = null, latestSeq = 0;
+
 function sseInit(res){
   res.writeHead(200, { 'Content-Type':'text/event-stream', 'Cache-Control':'no-cache', Connection:'keep-alive' });
   res.write(':ok\n\n');
@@ -99,30 +103,40 @@ function tickWorld(){
 
 setInterval(() => {
   tickWorld();
-  if (streamClients.size){
+  if (streamClients.size || pollWaiters.size){
     const d = buildDiff();
     if (d){
       const active = [];
       for (let c=0;c<NCHUNKS;c++) if (engine.active[c]) active.push(c);
-      const msg = `data: ${JSON.stringify({ t: engine.tickCount, g: engine.gravityDeg, a: active, ...d })}\n\n`;
+      latestSeq++;
+      latestDiff = { t: engine.tickCount, g: engine.gravityDeg, a: active, ...d, seq: latestSeq };
+      const msg = `data: ${JSON.stringify(latestDiff)}\n\n`;
       for (const res of streamClients){ try { res.write(msg); } catch { streamClients.delete(res); } }
+      for (const res of [...pollWaiters]){
+        pollWaiters.delete(res);
+        try { json(res, 200, latestDiff); } catch {}
+      }
     }
   }
 }, 16);
 
-setInterval(() => {
-  if (!teleClients.size) return;
+function statsNow(){
   const counts = engine.counts();
   let particles = 0; for (let m=1;m<11;m++) particles += counts[m];
   let activeN = 0; for (let c=0;c<NCHUNKS;c++) if (engine.active[c]) activeN++;
   const mem = process.memoryUsage();
-  const msg = `data: ${JSON.stringify({
+  return {
     tick: engine.tickCount, particles, activeChunks: activeN, totalChunks: NCHUNKS,
     stepUs: Math.round(engine.lastStepUs*10)/10, paused,
     heapMB: Math.round(mem.heapUsed/1048576*10)/10,
     rssMB: Math.round(mem.rss/1048576*10)/10,
     counts: Array.from(counts.slice(1,11)),
-  })}\n\n`;
+  };
+}
+
+setInterval(() => {
+  if (!teleClients.size) return;
+  const msg = `data: ${JSON.stringify(statsNow())}\n\n`;
   for (const res of teleClients){ try { res.write(msg); } catch { teleClients.delete(res); } }
 }, 500);
 
@@ -138,6 +152,18 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (p === '/api/stream'){ streamClients.add(res); sseInit(res); req.on('close', () => streamClients.delete(res)); return; }
+  if (p === '/api/poll'){
+    const since = parseInt(u.searchParams.get('since')||'0',10);
+    if (latestSeq > since && latestDiff) return json(res, 200, latestDiff);
+    pollWaiters.add(res);
+    const to = setTimeout(() => {
+      pollWaiters.delete(res);
+      try { res.writeHead(200, {'Content-Type':'application/json'}); res.end(JSON.stringify({ same: true, seq: latestSeq })); } catch {}
+    }, 1200);
+    req.on('close', () => { clearTimeout(to); pollWaiters.delete(res); });
+    return;
+  }
+  if (p === '/api/telemetry.json') return json(res, 200, statsNow());
   if (p === '/api/telemetry'){ teleClients.add(res); sseInit(res); req.on('close', () => teleClients.delete(res)); return; }
 
   if (p === '/api/state'){
