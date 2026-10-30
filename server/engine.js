@@ -368,5 +368,5 @@ class Engine {
   }
 }
 
-module.exports = { Engine, MAT, MAT_NAMES, W, H, CH, NCHUNKS, AMBIENT };
+module.exports = { Engine, MAT, MAT_NAMES, W, H, N, CW, CH, CHH, NCHUNKS, AMBIENT };
 globalThis.ATELIER = module.exports; // browser (worker shim) access without require
